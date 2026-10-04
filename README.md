@@ -37,9 +37,9 @@ chmod 644 /etc/clamscan.exclude
 5.共通
 ```
 sesearch -b antivirus_can_scan_system -AC
-mkdir -m 644 -p /var/clamav-isolate-file 
-semanage fcontext -a -t antivirus_tmp_t '/var/clamav-isolate-file/'
-restorecon -v '/var/clamav-isolate-file/'
+mkdir -m 700 -p /var/lib/clamav/quarantine
+restorecon -Rv /var/lib/clamav/quarantine
+ls -ldZ /var/lib/clamav/quarantine
 ```
 
 6.リアルタイムスキャンを使いたい場合のみ。

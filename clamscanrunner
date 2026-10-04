@@ -167,7 +167,7 @@ if [ "${RET_DEV_OPTARG_ISNUMERIC}" -ge 2 ] || [ "${DEV_OPTARG}" -lt 1 ] || [ "${
 	usage_exit
 fi
 
-readonly ISODIR="/var/clamav-isolate-file"
+readonly ISODIR="/var/lib/clamav/quarantine"
 
 mkdir -p "${ISODIR}"
 chmod 700 "${ISODIR}"
