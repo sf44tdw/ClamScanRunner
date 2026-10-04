@@ -169,7 +169,9 @@ fi
 
 readonly ISODIR="/var/clamav-isolate-file"
 
-mkdir -p "${ISODIR}" && chmod 644 "${ISODIR}"
+mkdir -p "${ISODIR}"
+chmod 700 "${ISODIR}"
+chown root:root "${ISODIR}"
 
 # 除外パスリストの読み込み。
 #ディレクトリは末尾に/。
