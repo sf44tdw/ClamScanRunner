@@ -8,7 +8,7 @@ yum -y install bzip2-devel
 
 2.前提パッケージインストール。
 ```
-yum -y install clamav clamd clamav-update
+yum -y install clamav clamav-update
 ```
 
 3.スクリプトDL
