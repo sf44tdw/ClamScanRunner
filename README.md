@@ -6,7 +6,12 @@
 yum -y install bzip2-devel
 ```
 
-2.スクリプトDL
+2.前提パッケージインストール。
+```
+yum -y install clamav clamd clamav-update
+```
+
+3.スクリプトDL
 ```
 cd && git clone https://github.com/sf44tdw/ClamScanRunner.git
 cd ClamScanRunner
@@ -19,7 +24,7 @@ echo '/sys/' >> /etc/clamscan.exclude
 chmod 644 /etc/clamscan.exclude
 ```
 
-3.隔離用ディレクトリ作成。
+4.隔離用ディレクトリ作成。
 ```
 sesearch -b antivirus_can_scan_system -AC
 mkdir -m 700 -p /var/lib/clamav/quarantine
