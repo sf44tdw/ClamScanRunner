@@ -26,7 +26,6 @@ chmod 644 /etc/clamscan.exclude
 
 4.隔離用ディレクトリ作成。
 ```
-sesearch -b antivirus_can_scan_system -AC
 mkdir -m 700 -p /var/lib/clamav/quarantine
 restorecon -Rv /var/lib/clamav/quarantine
 ls -ldZ /var/lib/clamav/quarantine
