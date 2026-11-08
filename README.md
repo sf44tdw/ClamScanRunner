@@ -31,3 +31,6 @@ restorecon -Rv /var/lib/clamav/quarantine
 ls -ldZ /var/lib/clamav/quarantine
 ```
 
+## GitHub Actions
+
+`main` ブランチへのプルリクエストでは、追跡対象のシェルスクリプトを `bash -n` で構文チェックします。マージ前にこのチェックを必須にするには、GitHub のブランチ保護ルールで `Shell syntax check / bash -n` を必須ステータスチェックに設定してください。
