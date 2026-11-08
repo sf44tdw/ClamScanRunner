@@ -1,35 +1,55 @@
-# ClamScan
-# clamavを使用したスキャン用スクリプト
+# ClamScanRunner
 
-1.アーカイブファイルスキャン前提パッケージインストール。
-```
-yum -y install bzip2-devel
-```
+ClamAV でファイルシステム全体を毎日スキャンし、検出したファイルを隔離するスクリプトです。
 
-2.前提パッケージインストール。
-```
-yum -y install clamav clamav-update setroubleshoot-server
-```
+## RPM のビルドとインストール
 
-3.スクリプトDL
-```
-cd && git clone https://github.com/sf44tdw/ClamScanRunner.git
-cd ClamScanRunner
-./initfreshclam.sh
-./clamscan_allow_selinux.sh
-./registrationtodaily.sh
-echo '/dev/' > /etc/clamscan.exclude
-echo '/proc/' >> /etc/clamscan.exclude
-echo '/sys/' >> /etc/clamscan.exclude
-chmod 644 /etc/clamscan.exclude
+RHEL 系の systemd を使用する環境を対象とします。`clamav`、`clamav-update` などの依存パッケージを提供するリポジトリ（必要に応じて EPEL）を有効にしてください。
+
+チェックアウトしたコミットからソースアーカイブを作り、RPM をビルドします。未コミットの変更はアーカイブに含まれません。
+
+```bash
+sudo dnf install rpm-build systemd-rpm-macros
+mkdir -p ~/rpmbuild/{SOURCES,RPMS}
+git archive --format=tar --prefix=clamscanrunner-1.0/ HEAD | gzip > ~/rpmbuild/SOURCES/clamscanrunner-1.0.tar.gz
+rpmbuild -ba clamscanrunner.spec
+sudo dnf install ~/rpmbuild/RPMS/noarch/clamscanrunner-1.0-1*.noarch.rpm
 ```
 
-4.隔離用ディレクトリ作成。
+初回インストール時に、RPM は以下を行います。
+
+- `/usr/sbin/clamscanrunner` と `/etc/cron.daily/clamscanrunner` を配置し、`crond` を有効化・起動します。実行時刻はシステムの cron/anacron 設定に依存します。
+- `/etc/clamscan.exclude` に `/dev/`、`/proc/`、`/sys/` を設定します。既存の設定は上書きせず、更新時も変更を保持します。
+- `/etc/freshclam.conf` をタイムスタンプ付きでバックアップし、`Example` の無効化と `NotifyClamd` の設定を行い、`freshclam` を実行します。
+- SELinux が有効な場合、`antivirus_can_scan_system` を永続的に有効にします。
+- ロックの後始末用 systemd サービスを有効化します。通常のシャットダウン時に `/tmp/clamscanrunner.lock` を削除し、電源断等で削除できなかった場合は次回起動時に tmpfiles が削除します。電源断や強制停止時のシャットダウン処理は保証できません。
+
+初回のウイルス定義更新にはネットワーク接続が必要です。設定、定義更新、サービス起動に失敗しても RPM のインストール自体は完了します。表示された `WARNING` を確認し、必要な操作を手動で再実行してください。コンテナーやオフラインのインストール先など、systemd が稼働していない環境ではサービスの有効化・起動が失敗することがあります。
+
+ビルド済み RPM のインストール・更新・削除スクリプトを、ホストの設定を変更せずにテストするには以下を実行します。
+
+```bash
+CLAMSCANRUNNER_RPM="$HOME/rpmbuild/RPMS/noarch/clamscanrunner-1.0-1.el10.noarch.rpm" python3 tests/test_rpm_scriptlets.py
 ```
-mkdir -m 700 -p /var/lib/clamav/quarantine
-restorecon -Rv /var/lib/clamav/quarantine
-ls -ldZ /var/lib/clamav/quarantine
+
+RPM のファイル名はビルド環境のディストリビューションに合わせて変更してください。
+
+従来のスクリプトで登録した既知の再起動用 cron ジョブは初回インストール時に削除します。変更されたジョブは自動削除しないので、警告が表示された場合は `/etc/cron.d/remove_clamscan_runner_lockfile` を確認して削除してください。新旧のロック削除処理を同時に使わないでください。
+
+必要に応じて隔離ディレクトリの SELinux ラベルを復元してください。
+
+```bash
+sudo mkdir -m 700 -p /var/lib/clamav/quarantine
+sudo restorecon -Rv /var/lib/clamav/quarantine
 ```
+
+## アンインストール
+
+```bash
+sudo dnf remove clamscanrunner
+```
+
+毎日の実行設定とロック後始末サービスは削除されます。共有サービスの `crond`、ウイルス定義、ログ、隔離ファイル、`freshclam.conf` とそのバックアップ、および SELinux boolean の変更は削除・復元しません。変更された `/etc/clamscan.exclude` は RPM により `.rpmsave` として保存されます。
 
 ## GitHub Actions
 

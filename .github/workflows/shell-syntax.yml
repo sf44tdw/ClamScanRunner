@@ -21,7 +21,7 @@ jobs:
         run: |
           mapfile -d '' scripts < <(
             git ls-files -z -- '*.sh' '*.bash' \
-              'clamscanrunner' 'remove_clamscan_runner_lockfile' 'pathes'
+              'clamscanrunner'
           )
 
           if (( ${#scripts[@]} == 0 )); then
