@@ -1,6 +1,6 @@
 Name:           clamscanrunner
 Version:        1.0
-Release:        2%{?dist}
+Release:        1%{?dist}
 Summary:        Daily ClamAV scan runner
 License:        GPL-3.0-or-later
 URL:            https://github.com/sf44tdw/ClamScanRunner
@@ -57,7 +57,7 @@ if [ "$1" -eq 1 ]; then
     fi
 
     if cp -a /etc/freshclam.conf "/etc/freshclam.conf.$(date +%%Y%%m%%d%%H%%M%%S).bak"; then
-        if sed -i -e '/^Example/s/^/#/' /etc/freshclam.conf; then
+        if sed -i -e '/^Example/s/^/#/' -e 's|^#NotifyClamd /path/to/clamd.conf|NotifyClamd /etc/clamd.d/scan.conf|' /etc/freshclam.conf; then
             freshclam || echo "WARNING: Initial freshclam update failed; run freshclam manually." >&2
         else
             echo "WARNING: Could not configure /etc/freshclam.conf; configure it and run freshclam manually." >&2
@@ -98,8 +98,5 @@ exit 0
 %{_tmpfilesdir}/clamscanrunner.conf
 
 %changelog
-* Sun Nov 08 2026 ClamScanRunner contributors - 1.0-2
-- Do not enable clamd notification automatically.
-
 * Sun Nov 08 2026 ClamScanRunner contributors - 1.0-1
 - Package the daily scanner and lock cleanup.

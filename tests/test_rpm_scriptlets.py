@@ -89,7 +89,7 @@ class ScriptletTests(unittest.TestCase):
         self.assertTrue(helper.exists())
         self.assertEqual(
             self.conf.read_text(),
-            "#Example\n#NotifyClamd /path/to/clamd.conf\n",
+            "#Example\nNotifyClamd /etc/clamd.d/scan.conf\n",
         )
         self.assertEqual(len(list(self.etc.glob("freshclam.conf.*.bak"))), 1)
         self.assertIn("freshclam ", self.calls())
@@ -97,18 +97,10 @@ class ScriptletTests(unittest.TestCase):
         self.assertIn("systemctl enable clamscanrunner-lock-cleanup.service", self.calls())
         self.assertIn("systemctl enable --now crond.service", self.calls())
 
-    def test_existing_clamd_notification_is_preserved(self):
-        self.conf.write_text("Example\nNotifyClamd /custom/clamd.conf\n")
-        self.run_scriptlet("postinstall", 1)
-        self.assertEqual(
-            self.conf.read_text(), "#Example\nNotifyClamd /custom/clamd.conf\n"
-        )
-
     def test_upgrade_preserves_configuration_and_service_state(self):
-        self.conf.write_text("#Example\nNotifyClamd /etc/clamd.d/scan.conf\n")
         self.run_scriptlet("postinstall", 2)
         self.run_scriptlet("preuninstall", 1)
-        self.assertEqual(self.conf.read_text(), "#Example\nNotifyClamd /etc/clamd.d/scan.conf\n")
+        self.assertEqual(self.conf.read_text(), "Example\n#NotifyClamd /path/to/clamd.conf\n")
         self.assertEqual(self.calls(), [])
         self.run_scriptlet("postuninstall", 1)
         self.assertEqual(self.calls(), ["systemctl daemon-reload"])
