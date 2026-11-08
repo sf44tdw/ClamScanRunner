@@ -64,9 +64,14 @@ function delete_lock_file_and_exit() {
 }
 
 function delete_lock_and_exit() {
-	local -r YMD_VAL=$(date +%Y%m%d%H%M%S)
-	echo "${YMD_VAL}_${1}_${3}" >>"${2}"
+	log_message "${1}_${3}" "${2}"
 	delete_lock_file_and_exit "${3}"
+}
+
+function log_message() {
+	local -r MESSAGE="${1}"
+	local -r TARGET_LOGFILE="${2:-${LOGFILE}}"
+	printf '%s_%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%:z')" "${MESSAGE}" >>"${TARGET_LOGFILE}"
 }
 
 function usage_exit() {
@@ -91,15 +96,15 @@ function systemd_service_start_stop() {
 	is_numeric "${EXIT_CODE_NUM}"
 	local -r ret="${?}"
 	if [ "${ret}" -ge 2 ]; then
-		echo "$(date +%Y%m%d%H%M%S)_EXIT_CODE_NUM_${EXIT_CODE_NUM}が数値ではありません。終了します。"
+		log_message "EXIT_CODE_NUM_${EXIT_CODE_NUM}が数値ではありません。終了します。"
 		delete_lock_file_and_exit 10
 	fi
 	if [ "${EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION}" != "${STATUS_ACTIVE}" ] && [ "${EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION}" != "${STATUS_INACTIVE}" ]; then
-		echo "$(date +%Y%m%d%H%M%S)_EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION_${EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION}が想定外の値です。終了します。"
+		log_message "EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION_${EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION}が想定外の値です。終了します。"
 		delete_lock_file_and_exit 10
 	fi
 	if [ "${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION}" != "${STATUS_ACTIVE}" ] && [ "${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION}" != "${STATUS_INACTIVE}" ]; then
-		echo "$(date +%Y%m%d%H%M%S)_EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION_${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION}が想定外の値です。終了します。"
+		log_message "EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION_${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION}が想定外の値です。終了します。"
 		delete_lock_file_and_exit 10
 	fi
 
@@ -107,15 +112,15 @@ function systemd_service_start_stop() {
 	if [ "${TARGET_SERVICE_ENABLED}" = "${STATUS_ENABLED}" ]; then
 		local -r B_STAT=$(systemctl show -p ActiveState "${TARGET_SERVICE_NAME}")
 		local -r TARGET_SERVICE_STATUS_BEFORE_OPERATION="${B_STAT#*=}"
-		echo "$(date +%Y%m%d%H%M%S)_${TARGET_SERVICE_NAME}の状態(処理前) = ${TARGET_SERVICE_STATUS_BEFORE_OPERATION} 処理=${SYSTEMCTL_OPERATION}"
+		log_message "${TARGET_SERVICE_NAME}の状態(処理前) = ${TARGET_SERVICE_STATUS_BEFORE_OPERATION} 処理=${SYSTEMCTL_OPERATION}"
 		if [ "${TARGET_SERVICE_STATUS_BEFORE_OPERATION}" = "${EXPECTED_TAREGT_SERVICE_STATUS_BEFORE_OPERATION}" ]; then
 			systemctl "${SYSTEMCTL_OPERATION}" "${TARGET_SERVICE_NAME}"
 			wait_2_min
 			local -r A_STAT=$(systemctl show -p ActiveState "${TARGET_SERVICE_NAME}")
 			local -r TARGET_SERVICE_STATUS_AFTER_OPERATION="${A_STAT#*=}"
-			echo "$(date +%Y%m%d%H%M%S)_${TARGET_SERVICE_NAME}の状態(処理後) = ${TARGET_SERVICE_STATUS_AFTER_OPERATION}"
+			log_message "${TARGET_SERVICE_NAME}の状態(処理後) = ${TARGET_SERVICE_STATUS_AFTER_OPERATION}"
 			if [ "${TARGET_SERVICE_STATUS_AFTER_OPERATION}" != "${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION}" ]; then
-				echo "$(date +%Y%m%d%H%M%S)_${TARGET_SERVICE_NAME}が期待されない状態です。状態=${TARGET_SERVICE_STATUS_AFTER_OPERATION} 期待=${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION} 終了します。"
+				log_message "${TARGET_SERVICE_NAME}が期待されない状態です。状態=${TARGET_SERVICE_STATUS_AFTER_OPERATION} 期待=${EXPECTED_TAREGT_SERVICE_STATUS_AFTER_OPERATION} 終了します。"
 				delete_lock_file_and_exit "${EXIT_CODE_NUM}"
 			fi
 		fi
@@ -158,12 +163,12 @@ readonly LOGDIR="/var/log/clamav-scan-log"
 readonly LOGFILE="${LOGDIR}/$(date +%Y%m%d%H%M%S).log"
 mkdir -p "${LOGDIR}" && chmod 755 "${LOGDIR}"
 
-echo "$(date +%Y%m%d%H%M%S)_開始します。" >>"${LOGFILE}"
+log_message "開始します。"
 
 is_numeric "${DEV_OPTARG}"
 readonly RET_DEV_OPTARG_ISNUMERIC="${?}"
 if [ "${RET_DEV_OPTARG_ISNUMERIC}" -ge 2 ] || [ "${DEV_OPTARG}" -lt 1 ] || [ "${DEV_OPTARG}" -gt 24 ]; then
-	echo "$(date +%Y%m%d%H%M%S)_-dオプションで取得した値が異常です。取得した値=${DEV_OPTARG}" >>"${LOGFILE}"
+	log_message "-dオプションで取得した値が異常です。取得した値=${DEV_OPTARG}"
 	usage_exit
 fi
 
@@ -191,33 +196,33 @@ if [ -s "${EXCLUDELIST}" ]; then
 fi
 
 if [ "${ENABLE_f}" = "t" ]; then
-	echo "$(date +%Y%m%d%H%M%S)_-fオプションが有効です。" >>"${LOGFILE}"
+	log_message "-fオプションが有効です。"
 	if [ -f "${_lockfile}" ]; then
-		echo "$(date +%Y%m%d%H%M%S)_ロックファイルを強制的に削除し、処理を継続します。" >>"${LOGFILE}"
+		log_message "ロックファイルを強制的に削除し、処理を継続します。"
 		rm -f "${_lockfile}" >>"${LOGFILE}" 2>&1
-		echo "$(date +%Y%m%d%H%M%S)_ロックファイルを強制的に削除しました。結果にかかわらず処理を続行します。" >>"${LOGFILE}"
+		log_message "ロックファイルを強制的に削除しました。結果にかかわらず処理を続行します。"
 	fi
 fi
 
 #ロックファイル生成。
-echo "$(date +%Y%m%d%H%M%S)_ロックファイル生成。" >>"${LOGFILE}"
+log_message "ロックファイル生成。"
 ln -s /dummy "${_lockfile}" >/dev/null 2>&1 || {
-	echo "$(date +%Y%m%d%H%M%S)_Cannot run multiple instance." >>"${LOGFILE}"
+	log_message "Cannot run multiple instance."
 	#他のプロセスが起動中なのでロックファイルは削除しない。
 	exit 110
 }
 
 trap 'rm "${_lockfile}"; exit' SIGHUP SIGINT SIGQUIT SIGTERM
 
-echo "$(date +%Y%m%d%H%M%S)_実行間隔制限判定開始。" >>"${LOGFILE}"
+log_message "実行間隔制限判定開始。"
 if [ "${ENABLE_f}" != "t" ]; then
 	#今の時間(何時?)
 	NowHour=$(date +%-H)
 	#割る数
 	readonly Dev="${DEV_OPTARG}"
 
-	echo "now=${NowHour}" >>"${LOGFILE}"
-	echo "dev=${Dev}" >>"${LOGFILE}"
+	log_message "now=${NowHour}"
+	log_message "dev=${Dev}"
 
 	mod="$((${NowHour} % ${Dev}))"
 	#制限が有効で、割る数で割り切れない時間なら起動しない。
@@ -225,20 +230,20 @@ if [ "${ENABLE_f}" != "t" ]; then
 		delete_lock_and_exit "起動間隔を制限しています。この時間は終了します。" "${LOGFILE}" 10
 	fi
 else
-	echo "$(date +%Y%m%d%H%M%S)_-fオプションが有効です。" >>"${LOGFILE}"
+	log_message "-fオプションが有効です。"
 fi
 
 # ファイル更新日時が5000日を越えたログファイルを削除
-echo "$(date +%Y%m%d%H%M%S)_旧ログ削除。" >>"${LOGFILE}"
+log_message "旧ログ削除。"
 readonly PARAM_DATE_NUM=5000
 find "${LOGDIR}" -name "*.log" -type f -mtime +"${PARAM_DATE_NUM}" -exec rm -f {} \;
 
 #freshclamがサービスになっていた場合は一旦停止する。
-echo "$(date +%Y%m%d%H%M%S)_DBアップデートサービス停止。" >>"${LOGFILE}"
+log_message "DBアップデートサービス停止。"
 stop_systemd_service "${UPDATOR_SERVICE}" 11 >>"${LOGFILE}" 2>&1
 
 #制限が有効で、clamscanもしくはfreshclamが既に実行中だった場合、起動しない。
-echo "$(date +%Y%m%d%H%M%S)_プロセス確認。" >>"${LOGFILE}"
+log_message "プロセス確認。"
 if [ "${ENABLE_f}" != "t" ]; then
 	readonly UP_LIST=$(pgrep -l "${UPDATOR}" | grep -v grep | grep -v "${MY_NAME}")
 	readonly UP_COUNT=$(echo "${UP_LIST}" | grep -v '^\s*$' | wc -l)
@@ -253,10 +258,10 @@ if [ "${ENABLE_f}" != "t" ]; then
 		delete_lock_and_exit "${SCANNER}が起動中です。終了します。" "${LOGFILE}" 13
 	fi
 else
-	echo "$(date +%Y%m%d%H%M%S)_-fオプションが有効です。" >>"${LOGFILE}"
+	log_message "-fオプションが有効です。"
 fi
 
-echo "$(date +%Y%m%d%H%M%S)_DB更新。" >>"${LOGFILE}"
+log_message "DB更新。"
 # DB update
 # epelからインストールの場合、freshclamのインストール時に、3時間ごとの自動更新(freshclam-sleep)が登録されるのであまり意味が無いが、念のため。
 ${UPDATOR} >>"${LOGFILE}" 2>&1
@@ -266,7 +271,7 @@ if [ "${RET_FRESHCLAM}" -ne 0 ]; then
 fi
 
 #freshclamがサービスになっていた場合は再起動する。
-echo "$(date +%Y%m%d%H%M%S)_DBアップデートサービス起動。" >>"${LOGFILE}"
+log_message "DBアップデートサービス起動。"
 restart_systemd_service "${UPDATOR_SERVICE}" 15 >>"${LOGFILE}" 2>&1
 
 #clamdのメモリ消費量が大きいので、スキャン中はオンアクセススキャンを停止する。
@@ -275,12 +280,12 @@ restart_systemd_service "${UPDATOR_SERVICE}" 15 >>"${LOGFILE}" 2>&1
 readonly ON_ACCESS_SCAN_SERVICE='clamonacc'
 readonly CLAMD_SERVICE='clamd@scan'
 
-echo "$(date +%Y%m%d%H%M%S)_オンアクセススキャンを停止する。" >>"${LOGFILE}"
+log_message "オンアクセススキャンを停止する。"
 stop_systemd_service "${ON_ACCESS_SCAN_SERVICE}" 16 >>"${LOGFILE}" 2>&1
 stop_systemd_service "${CLAMD_SERVICE}" 17 >>"${LOGFILE}" 2>&1
-echo "$(date +%Y%m%d%H%M%S)_オンアクセススキャンの停止を完了。" >>"${LOGFILE}"
+log_message "オンアクセススキャンの停止を完了。"
 
-echo "$(date +%Y%m%d%H%M%S)_スキャン開始。" >>"${LOGFILE}"
+log_message "スキャン開始。"
 # virus scan
 #感染したファイルのみログに記載する。
 #感染したファイルは隔離する。
@@ -290,17 +295,17 @@ nice "${NICE_ARGS[@]}" >>"${LOGFILE}" 2>&1
 
 readonly RET_CLAMSCAN="${?}"
 if [ "${RET_CLAMSCAN}" -ne 0 ]; then
-	echo "$(date +%Y%m%d%H%M%S)_clamscanの戻り値が${RET_CLAMSCAN}です。" >>"${LOGFILE}"
+	log_message "clamscanの戻り値が${RET_CLAMSCAN}です。"
 fi
-echo "$(date +%Y%m%d%H%M%S)_スキャン終了。" >>"${LOGFILE}"
+log_message "スキャン終了。"
 
 #再開の際は、ステータスがactiveでないなら再始動を試みる。
 
-echo "$(date +%Y%m%d%H%M%S)_オンアクセススキャンを再開する。" >>"${LOGFILE}"
+log_message "オンアクセススキャンを再開する。"
 restart_systemd_service "${CLAMD_SERVICE}" 18 >>"${LOGFILE}" 2>&1
 restart_systemd_service "${ON_ACCESS_SCAN_SERVICE}" 19 >>"${LOGFILE}" 2>&1
 
-echo "$(date +%Y%m%d%H%M%S)_オンアクセススキャンの再開を完了。" >>"${LOGFILE}"
+log_message "オンアクセススキャンの再開を完了。"
 
 #ログファイルの内容を表示
 cat "${LOGFILE}"
