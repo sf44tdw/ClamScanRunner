@@ -1,0 +1,11 @@
+[Unit]
+Description=Remove the ClamScanRunner lock at shutdown
+DefaultDependencies=no
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rm -f /tmp/clamscanrunner.lock
+
+[Install]
+WantedBy=shutdown.target
