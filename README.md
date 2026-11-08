@@ -34,6 +34,16 @@ CLAMSCANRUNNER_RPM="$HOME/rpmbuild/RPMS/noarch/clamscanrunner-1.0-1.el10.noarch.
 
 RPM のファイル名はビルド環境のディストリビューションに合わせて変更してください。
 
+## GitHub リリース
+
+GitHub でリリースを公開すると、そのタグのソースから AlmaLinux 10 のコンテナーで RPM をビルドし、テスト後にリリースへ添付します。公開後にワークフローが完了するまで、RPM は表示されません。配布ファイル名は `clamscanrunner-<バージョン>-<リリース番号>.rpm`（例: `clamscanrunner-1.0-1.rpm`）で、パッケージのアーキテクチャは `noarch` です。バージョンとリリース番号はタグ名ではなく spec ファイルに従うため、リリース前に必要に応じて更新してください。同名ファイルがすでにある場合は上書きします。
+
+同じ配布用 RPM をローカルでビルドするには、通常のビルド依存に加えて Git、Python 3、tar、gzip を用意し、コミット済みのソースから以下を実行します。
+
+```bash
+bash scripts/build-release-rpm.sh dist
+```
+
 従来のスクリプトで登録した既知の再起動用 cron ジョブは初回インストール時に削除します。変更されたジョブは自動削除しないので、警告が表示された場合は `/etc/cron.d/remove_clamscan_runner_lockfile` を確認して削除してください。新旧のロック削除処理を同時に使わないでください。
 
 必要に応じて隔離ディレクトリの SELinux ラベルを復元してください。

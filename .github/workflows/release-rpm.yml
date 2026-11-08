@@ -1,0 +1,45 @@
+name: Release RPM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      - name: Build and test RPM
+        shell: bash
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            almalinux:10 \
+            bash -euo pipefail -c '
+              dnf install -y rpm-build systemd-rpm-macros git-core python3 tar gzip
+              git config --global --add safe.directory /workspace
+              bash scripts/build-release-rpm.sh dist
+            '
+
+      - name: Attach RPM to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          shopt -s nullglob
+          rpms=(dist/*.rpm)
+          if (( ${#rpms[@]} != 1 )); then
+            echo "::error::Expected exactly one binary RPM, found ${#rpms[@]}."
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" "${rpms[0]}" --clobber
